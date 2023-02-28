@@ -35,8 +35,9 @@ const SPRITES_SCALE: f32 = 0.5;
 
 const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 500.;
-const ENEMY_MAX: u32 = 3;
+const ENEMY_MAX: u32 = 2;
 const PLAYER_RESPAWN_DELAY: f64 = 2.;
+const FORMATION_MEMBERS_MAX: u32 = 2;
 
 // endregion:   --- Game Constants
 
