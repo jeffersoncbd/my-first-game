@@ -3,7 +3,7 @@ name = "my-first-game"
 version = "0.1.0"
 edition = "2021"
 
-# rustup run nightly cargo run --features bevy/dynamicexit
+# rustup run nightly cargo run --features bevy/dynamic
 
 [dependencies]
 bevy = "0.9.1"
