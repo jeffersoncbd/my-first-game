@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use bevy::{math::Vec3Swizzles, sprite::collide_aabb::collide};
-use components::{Enemy, FromPlayer, Laser, Movable, SpriteSize, Velocity};
+use components::{
+    Enemy, Explosion, ExplosionTimer, ExplosionToSpawn, FromPlayer, Laser, Movable, SpriteSize,
+    Velocity,
+};
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 
@@ -9,6 +12,7 @@ mod enemy;
 mod player;
 
 // region:      --- Asset Constants
+
 const PLAYER_SPRITE: &str = "player_b_01.png";
 const PLAYER_SIZE: (f32, f32) = (98., 75.);
 const PLAYER_LASER_SPRITE: &str = "laser_a_01.png";
@@ -19,17 +23,22 @@ const ENEMY_SIZE: (f32, f32) = (93., 84.);
 const ENEMY_LASER_SPRITE: &str = "laser_b_01.png";
 const ENEMY_LASER_SIZE: (f32, f32) = (17., 55.);
 
-const EXPLOSION_SHEET: &str = "explo_a_sheet";
+const EXPLOSION_SHEET: &str = "explo_a_sheet.png";
+const EXPLOSION_LEN: usize = 16;
 
 const SPRITES_SCALE: f32 = 0.5;
+
 // endregion:   --- Asset Constants
 
 // region:      --- Game Constants
+
 const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 500.;
+
 // endregion:   --- Game Constants
 
 // region:      --- Resources
+
 #[derive(Resource)]
 pub struct WinSize {
     pub w: f32,
@@ -44,6 +53,7 @@ pub struct GameTextures {
     enemy_laser: Handle<Image>,
     explosion: Handle<TextureAtlas>,
 }
+
 // endregion:   --- Resources
 
 fn main() {
@@ -63,6 +73,8 @@ fn main() {
         .add_startup_system(setup_system)
         .add_system(movable_system)
         .add_system(player_laser_hit_enemy_system)
+        .add_system(explosion_to_spawn_system)
+        .add_system(explosion_animation_system)
         .run();
 }
 
@@ -147,10 +159,53 @@ fn player_laser_hit_enemy_system(
                 enemy_size.0 * enemy_scale,
             );
 
-            // remove entities
             if let Some(_) = collision {
+                // remove entities
                 commands.entity(enemy_entity).despawn();
                 commands.entity(laser_entity).despawn();
+
+                // print explosion
+                commands.spawn(ExplosionToSpawn(enemy_tf.translation.clone()));
+            }
+        }
+    }
+}
+
+fn explosion_to_spawn_system(
+    mut commands: Commands,
+    game_textures: Res<GameTextures>,
+    query: Query<(Entity, &ExplosionToSpawn)>,
+) {
+    for (explosion_spawn_entity, explosion_to_spawn) in query.iter() {
+        // spawn the explosion sprite
+        commands
+            .spawn(SpriteSheetBundle {
+                texture_atlas: game_textures.explosion.clone(),
+                transform: Transform {
+                    translation: explosion_to_spawn.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(Explosion)
+            .insert(ExplosionTimer::default());
+
+        // despawn the explosionToSpawn
+        commands.entity(explosion_spawn_entity).despawn();
+    }
+}
+
+fn explosion_animation_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut ExplosionTimer, &mut TextureAtlasSprite), With<Explosion>>,
+) {
+    for (entity, mut timer, mut sprite) in query.iter_mut() {
+        timer.0.tick(time.delta());
+        if timer.0.finished() {
+            sprite.index += 1; // move to next sprite cell
+            if sprite.index >= EXPLOSION_LEN {
+                commands.entity(entity).despawn();
             }
         }
     }
