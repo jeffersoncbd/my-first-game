@@ -8,6 +8,12 @@ use components::{
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 
+use bevy::window::WindowId;
+use bevy::winit::WinitWindows;
+use winit::window::Icon;
+
+use image;
+
 mod components;
 mod enemy;
 mod player;
@@ -87,12 +93,34 @@ impl PlayerState {
 
 // endregion:   --- Resources
 
+pub fn set_window_icon(
+    // we have to use `NonSend` here
+    windows: NonSend<WinitWindows>,
+) {
+    let primary = windows.get_window(WindowId::primary()).unwrap();
+
+    // here we use the `image` crate to load our icon data from a png file
+    // this is not a very bevy-native solution, but it will do
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open("icon.ico")
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+
+    let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
+
+    primary.set_window_icon(Some(icon));
+}
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
-                title: "Rust Invaders".to_string(),
+                title: "Space Invaders".to_string(),
                 width: 600.,
                 height: 600.,
                 ..Default::default()
@@ -102,6 +130,7 @@ fn main() {
         .add_plugin(PlayerPlugin)
         .add_plugin(EnemyPlugin)
         .add_startup_system(setup_system)
+        .add_startup_system(set_window_icon)
         .add_system(movable_system)
         .add_system(player_laser_hit_enemy_system)
         .add_system(enemy_laser_hit_player_system)
